@@ -1,18 +1,18 @@
 {
-  "name": "zoektocht",
+  "name": "vossenjacht-tracker",
   "version": "1.0.0",
-  "description": "",
-  "main": "leaflet.js",
+  "description": "Live vossenjacht location tracker",
+  "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
   "dependencies": {
-    "express": "^5.1.0",
-    "socket.io": "^4.8.1"
-  }
+    "express": "^4.18.0",
+    "socket.io": "^4.5.0"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "author": "Jouw Naam",
+  "license": "MIT"
 }
