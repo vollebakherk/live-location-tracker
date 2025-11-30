@@ -1,0 +1,173 @@
+/* style.css - Algemene styling voor alle pagina's */
+* { 
+    margin: 0; 
+    padding: 0; 
+    box-sizing: border-box; 
+}
+
+body { 
+    font-family: Arial, sans-serif; 
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: #2c3e50;
+    color: white;
+}
+
+.header {
+    padding: 20px;
+    text-align: center;
+}
+
+.header.vos { background: #e74c3c; }
+.header.zoeker { background: #3498db; }
+.header.viewer { background: #27ae60; }
+
+.controls {
+    padding: 15px;
+    background: #34495e;
+    text-align: center;
+}
+
+.password-section {
+    padding: 15px;
+    background: #8e44ad;
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.player-info {
+    padding: 10px;
+    background: #2980b9;
+    text-align: center;
+    font-size: 14px;
+}
+
+.links {
+    padding: 15px;
+    background: #2980b9;
+    text-align: center;
+}
+
+.links a {
+    color: white;
+    text-decoration: none;
+    margin: 0 15px;
+    padding: 10px 20px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 5px;
+    display: inline-block;
+}
+
+.links a:hover {
+    background: rgba(255,255,255,0.3);
+}
+
+input {
+    padding: 10px;
+    margin: 5px;
+    border: none;
+    border-radius: 5px;
+    font-size: 16px;
+}
+
+button {
+    padding: 12px 25px;
+    margin: 5px;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+button.vos { background: #e74c3c; }
+button.vos:hover { background: #c0392b; }
+
+button.zoeker { background: #3498db; }
+button.zoeker:hover { background: #2980b9; }
+
+button.viewer { background: #27ae60; }
+button.viewer:hover { background: #219a52; }
+
+button.stop { 
+    background: #95a5a6; 
+}
+button.stop:hover { 
+    background: #7f8c8d; 
+}
+
+button:disabled {
+    background: #7f8c8d;
+    cursor: not-allowed;
+}
+
+#status { 
+    margin-top: 10px; 
+    font-size: 14px;
+    padding: 10px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 5px;
+    min-height: 40px;
+}
+
+#map { 
+    flex-grow: 1; 
+    width: 100%; 
+}
+
+.vos-badge {
+    background: #e74c3c;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 15px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.zoeker-badge {
+    background: #3498db;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 15px;
+    font-size: 12px;
+}
+
+.vos-alert {
+    background: #e74c3c;
+    color: white;
+    padding: 10px;
+    border-radius: 5px;
+    margin: 10px 0;
+    animation: pulse 1.5s infinite;
+}
+
+.distance-info {
+    background: #27ae60;
+    padding: 8px 12px;
+    border-radius: 5px;
+    margin: 5px 0;
+}
+
+.error {
+    color: #e74c3c;
+    background: rgba(231, 76, 60, 0.1);
+    padding: 10px;
+    border-radius: 5px;
+    margin: 10px 0;
+}
+
+.success {
+    color: #2ecc71;
+    background: rgba(46, 204, 113, 0.1);
+    padding: 10px;
+    border-radius: 5px;
+    margin: 10px 0;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
