@@ -110,14 +110,20 @@
 
     <div id="map"></div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="/socket.io/socket.io.js"></script>
     <script>
+    console.log('🎯 Tracker wordt geladen...');
+    
+    // Eerst simpele test
+    try {
         const socket = io();
+        console.log('✅ Socket.io geladen');
+        
         let map, currentMarker, accuracyCircle;
         let watchId = null;
         let isVos = false;
         const TRACKER_ID = 'vos-' + Math.random().toString(36).substr(2, 5);
+
+        console.log('🆔 Tracker ID:', TRACKER_ID);
 
         // Vos icon
         const vosIcon = L.divIcon({
@@ -148,9 +154,16 @@
             attribution: '© OpenStreetMap contributors',
             maxZoom: 19
         }).addTo(map);
+        
+        console.log('🗺️ Kaart geïnitialiseerd');
 
-        // Luister naar vos status updates
+        // Socket events
+        socket.on('connect', () => {
+            console.log('✅ Verbonden met server!');
+        });
+
         socket.on('vosStatus', (data) => {
+            console.log('🦊 Vos status:', data);
             if (data.hasVos && !isVos) {
                 document.getElementById('passwordSection').innerHTML = `
                     <h3>❌ Er is al een vos!</h3>
@@ -161,6 +174,7 @@
         });
 
         socket.on('vosSuccess', (data) => {
+            console.log('✅ Vos geworden:', data);
             isVos = true;
             document.getElementById('passwordSection').style.display = 'none';
             document.getElementById('controlsSection').style.display = 'block';
@@ -169,11 +183,14 @@
         });
 
         socket.on('error', (message) => {
+            console.error('❌ Socket error:', message);
             document.getElementById('passwordStatus').innerHTML = 
                 `<div class="error">${message}</div>`;
         });
 
-        function becomeVos() {
+        // Functies
+        window.becomeVos = function() {
+            console.log('🦊 Word vos clicked');
             const password = document.getElementById('passwordInput').value;
             const playerName = document.getElementById('playerName').value || 'Anonieme Vos';
             
@@ -183,6 +200,8 @@
                 return;
             }
 
+            console.log('🦊 Vos aanvraag:', { password: '***', playerName, TRACKER_ID });
+            
             socket.emit('becomeVos', {
                 password: password,
                 trackerId: TRACKER_ID,
@@ -190,7 +209,8 @@
             });
         }
 
-        function stopBeingVos() {
+        window.stopBeingVos = function() {
+            console.log('🦊 Stop als vos');
             socket.emit('stopVos');
             isVos = false;
             document.getElementById('passwordSection').style.display = 'block';
@@ -205,7 +225,9 @@
             document.getElementById('status').innerHTML = 'Je bent geen vos meer';
         }
 
-        function startSharing() {
+        window.startSharing = function() {
+            console.log('📍 Start sharing clicked, isVos:', isVos);
+            
             if (!isVos) {
                 alert('Je moet eerst de vos worden!');
                 return;
@@ -227,7 +249,8 @@
             );
         }
 
-        function stopSharing() {
+        window.stopSharing = function() {
+            console.log('⏹️ Stop sharing');
             if (watchId) {
                 navigator.geolocation.clearWatch(watchId);
                 watchId = null;
@@ -236,22 +259,28 @@
         }
 
         function sendLocationToServer(position) {
-            if (!isVos) return;
+            if (!isVos) {
+                console.log('❌ Niet vos, locatie niet verzonden');
+                return;
+            }
 
             const locationData = {
                 lat: position.coords.latitude,
                 lng: position.coords.longitude,
                 accuracy: position.coords.accuracy,
                 trackerId: TRACKER_ID,
-                name: document.getElementById('playerName').value || 'De Vos',
+                name: document.getElementById('playerName')?.value || 'De Vos',
                 type: "vos"
             };
 
+            console.log('📍 Stuur vos locatie:', locationData);
             socket.emit('updateLocation', locationData);
             updateOwnMap(locationData);
         }
 
         function updateOwnMap(location) {
+            console.log('🗺️ Update eigen kaart:', location);
+            
             if (currentMarker) map.removeLayer(currentMarker);
             if (accuracyCircle) map.removeLayer(accuracyCircle);
 
@@ -273,10 +302,23 @@
         }
 
         function handleLocationError(error) {
-            console.error('Locatie fout:', error);
+            console.error('❌ Locatie fout:', error);
             document.getElementById('status').innerHTML = 
                 '<span style="color: #e74c3c;">❌ Locatie fout: ' + error.message + '</span>';
         }
-    </script>
+        
+        console.log('✅ Alle JavaScript geladen en klaar');
+        
+    } catch (error) {
+        console.error('💥 CRITICAL ERROR:', error);
+        document.body.innerHTML = `
+            <div style="padding: 20px; background: #e74c3c; color: white;">
+                <h1>❌ JavaScript Error</h1>
+                <p>${error.message}</p>
+                <p>Check de browser console voor details.</p>
+            </div>
+        `;
+    }
+</script>
 </body>
 </html>
