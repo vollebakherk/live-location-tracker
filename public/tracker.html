@@ -50,10 +50,12 @@
         let watchId = null;
         let isSharing = false;
 
-        // Initialiseer kaart
-        map = L.map('map').setView([50.9010206, 5.3104384], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
+       // Initialiseer kaart
+map = L.map('map').setView([50.9010206, 5.3104384], 13);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors',
+    maxZoom: 19
+}).addTo(map);
         function startSharing() {
             if (!navigator.geolocation) {
                 alert('Geolocatie niet ondersteund');
