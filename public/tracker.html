@@ -48,21 +48,21 @@
         const socket = io();
         let map, currentMarker, accuracyCircle;
         let watchId = null;
-        let isSharing = false;
+        const TRACKER_ID = 'main-tracker';
 
-       // Initialiseer kaart
-map = L.map('map').setView([50.9010206, 5.3104384], 13);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap contributors',
-    maxZoom: 19
-}).addTo(map);
+        // Initialiseer kaart
+        map = L.map('map').setView([50.9010206, 5.3104384], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(map);
+
         function startSharing() {
             if (!navigator.geolocation) {
                 alert('Geolocatie niet ondersteund');
                 return;
             }
 
-            isSharing = true;
             document.getElementById('status').innerHTML = 
                 '<span style="color: #2ecc71;">🔴 LIVE - Je locatie wordt gedeeld met viewers</span>';
 
@@ -82,29 +82,19 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 navigator.geolocation.clearWatch(watchId);
                 watchId = null;
             }
-            isSharing = false;
             document.getElementById('status').innerHTML = '⏹️ Sharing gestopt';
         }
 
-       function sendLocationToServer(position) {
-    const TRACKER_ID = 'main-tracker'; // VOEG DIT TOE
-    
-    const locationData = {
-        lat: position.coords.latitude,
-        lng: position.coords.longitude,
-        accuracy: position.coords.accuracy,
-        trackerId: TRACKER_ID, // ← BELANGRIJK: voeg trackerId toe!
-        name: "Jouw Locatie"   // Pas deze naam aan naar jouw naam
-    };
+        function sendLocationToServer(position) {
+            const locationData = {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude,
+                accuracy: position.coords.accuracy,
+                trackerId: TRACKER_ID,
+                name: "Jouw Locatie"
+            };
 
-    console.log('📍 Stuur locatie naar server:', locationData); // Debug log
-
-    // Stuur naar server
-    socket.emit('updateLocation', locationData);
-    
-    // Update eigen kaart
-    updateOwnMap(locationData);
-}
+            console.log('📍 Stuur locatie naar server:', locationData);
 
             // Stuur naar server
             socket.emit('updateLocation', locationData);
@@ -141,9 +131,6 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             document.getElementById('status').innerHTML = 
                 '<span style="color: #e74c3c;">❌ Locatie fout: ' + error.message + '</span>';
         }
-
-        // Automatisch starten (optioneel)
-        // startSharing();
     </script>
 </body>
 </html>
