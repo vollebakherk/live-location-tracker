@@ -110,29 +110,37 @@
 
     <div id="map"></div>
 
- <script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script>
     console.log('🎯 Tracker wordt geladen...');
+    console.log('🔍 Socket.io direct check:', typeof io);
+    console.log('🔍 Leaflet direct check:', typeof L);
     
-    // Wacht tot ALLE scripts geladen zijn
-    window.addEventListener('load', function() {
-        console.log('✅ Pagina volledig geladen');
+    // Wacht tot socket.io geladen is
+    function waitForSocketIO(callback) {
+        if (typeof io !== 'undefined') {
+            console.log('✅ Socket.io is geladen!');
+            callback();
+        } else {
+            console.log('⏳ Wacht op socket.io...');
+            setTimeout(function() {
+                waitForSocketIO(callback);
+            }, 100);
+        }
+    }
+    
+    waitForSocketIO(function() {
+        console.log('🚀 Start app initialisatie...');
         initializeApp();
     });
 
     function initializeApp() {
-        console.log('🚀 Initializing app...');
+        console.log('🚀 Initializing app met Socket.io...');
         
-        // Controleer of socket.io beschikbaar is
-        if (typeof io === 'undefined') {
-            console.error('❌ Socket.io niet geladen!');
-            document.getElementById('passwordStatus').innerHTML = 
-                '<div class="error">Socket.io niet geladen - refresh pagina</div>';
-            return;
-        }
-
         try {
             const socket = io();
-            console.log('✅ Socket.io verbonden');
+            console.log('✅ Socket.io verbonden!');
             
             let map, currentMarker, accuracyCircle;
             let watchId = null;
@@ -175,7 +183,7 @@
 
             // Socket events
             socket.on('connect', () => {
-                console.log('✅ Verbonden met server!');
+                console.log('✅ Verbonden met server! Socket ID:', socket.id);
             });
 
             socket.on('vosStatus', (data) => {
