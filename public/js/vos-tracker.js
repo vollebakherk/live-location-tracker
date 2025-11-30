@@ -24,7 +24,7 @@ function initializeVosTracker() {
             },
             onVosStatus: handleVosStatus,
             onVosSuccess: handleVosSuccess,
-            onLocationUpdate: handleLocationUpdate, // ← BELANGRIJK: ontvang andere spelers
+            onLocationUpdate: handleLocationUpdate,
             onError: handleError
         });
 
@@ -69,9 +69,7 @@ function handleError(message) {
         `<div class="error">${message}</div>`;
 }
 
-// NIEUW: Ontvang locaties van andere spelers
 function handleLocationUpdate(location) {
-    // Als het niet de vos zelf is, toon de marker
     if (location.trackerId !== TRACKER_ID) {
         updateOtherPlayerMarker(location);
     }
@@ -80,23 +78,19 @@ function handleLocationUpdate(location) {
 function updateOtherPlayerMarker(location) {
     const markerId = location.trackerId;
     
-    // Verwijder oude marker als die er is
     if (window.otherMarkers && window.otherMarkers[markerId]) {
         map.removeLayer(window.otherMarkers[markerId]);
     }
     
-    // Maak otherMarkers object als het niet bestaat
     if (!window.otherMarkers) {
         window.otherMarkers = {};
     }
     
-    // Bepaal icon type
     const iconType = location.isVos ? createVosIcon() : createZoekerIcon();
     const popupText = location.isVos 
         ? `<b>🦊 DE VOS?!</b><br>${location.name}<br><small>Hoe kan dit? Er kan maar 1 vos zijn!</small>` 
         : `<b>👤 ${location.name}</b><br><small>Zoeker - afstand: ${calculateDistanceToPlayer(location)}m</small>`;
     
-    // Voeg marker toe
     window.otherMarkers[markerId] = L.marker([location.lat, location.lng], { 
         icon: iconType 
     })
@@ -118,7 +112,6 @@ function calculateDistanceToPlayer(otherLocation) {
     return Math.round(distance);
 }
 
-// FUNCTIES VOOR BUTTONS
 function becomeVos() {
     console.log('🦊 Word vos clicked');
     const password = document.getElementById('passwordInput').value;
@@ -218,8 +211,8 @@ function updateOwnMap(location) {
         icon: createVosIcon() 
     })
     .addTo(map)
-    .bindPopup(`<b>🦊 Jij bent de vos!</b><br>Ren maar hard!`)
-    .openPopup();
+    .bindPopup(`<b>🦊 Jij bent de vos!</b><br>Ren maar hard!`);
+    // .openPopup() VERWIJDERD - popup niet automatisch openen
 
     accuracyCircle = L.circle([location.lat, location.lng], {
         color: '#e74c3c',
@@ -228,7 +221,6 @@ function updateOwnMap(location) {
         radius: location.accuracy
     }).addTo(map);
 
-    // ALLEEN centreren bij eerste update, daarna niet meer
     if (!window.kaartIsGecentreerd) {
         map.setView([location.lat, location.lng], 16);
         window.kaartIsGecentreerd = true;
