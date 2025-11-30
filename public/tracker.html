@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Live Locatie Tracker</title>
+    <title>Vossenjacht - Word de Vos</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -10,36 +10,104 @@
             height: 100vh;
             display: flex;
             flex-direction: column;
-        }
-        .controls {
-            padding: 20px;
             background: #2c3e50;
             color: white;
+        }
+        .header {
+            padding: 20px;
+            background: #e74c3c;
             text-align: center;
+        }
+        .controls {
+            padding: 15px;
+            background: #34495e;
+            text-align: center;
+        }
+        .password-section {
+            padding: 15px;
+            background: #8e44ad;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        input {
+            padding: 10px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
         }
         button {
             padding: 12px 25px;
-            margin: 0 10px;
+            margin: 5px;
             background: #e74c3c;
             color: white;
             border: none;
             border-radius: 5px;
             cursor: pointer;
             font-size: 16px;
+            font-weight: bold;
         }
         button:hover { background: #c0392b; }
         button.stop { background: #95a5a6; }
         button.stop:hover { background: #7f8c8d; }
-        #status { margin-top: 10px; font-size: 14px; }
+        button:disabled {
+            background: #7f8c8d;
+            cursor: not-allowed;
+        }
+        #status { 
+            margin-top: 10px; 
+            font-size: 14px;
+            padding: 10px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 5px;
+        }
         #map { flex-grow: 1; width: 100%; }
+        .vos-badge {
+            background: #e74c3c;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .error {
+            color: #e74c3c;
+            background: rgba(231, 76, 60, 0.1);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .success {
+            color: #2ecc71;
+            background: rgba(46, 204, 113, 0.1);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
     </style>
 </head>
 <body>
-    <div class="controls">
-        <button onclick="startSharing()">📍 Start Live Sharing</button>
-        <button class="stop" onclick="stopSharing()">⏹️ Stop Sharing</button>
-        <div id="status">Klik op Start Live Sharing om je locatie te delen</div>
+    <div class="header">
+        <h1>🦊 Vossenjacht - Word de Vos</h1>
+        <p>Voer het wachtwoord in om de vos te worden</p>
     </div>
+
+    <div class="password-section" id="passwordSection">
+        <h3>🔐 Word de Vos</h3>
+        <input type="password" id="passwordInput" placeholder="Voer vos wachtwoord in">
+        <input type="text" id="playerName" placeholder="Jouw naam">
+        <button onclick="becomeVos()">🦊 Word de Vos</button>
+        <div id="passwordStatus"></div>
+    </div>
+
+    <div class="controls" id="controlsSection" style="display: none;">
+        <h3>🦊 Je bent de VOS!</h3>
+        <button onclick="startSharing()">📍 Start Vos Tracking</button>
+        <button class="stop" onclick="stopSharing()">⏹️ Stop Vos</button>
+        <button class="stop" onclick="stopBeingVos()">🚪 Stop Als Vos</button>
+        <div id="status">Klik op Start Vos Tracking om je locatie te delen</div>
+    </div>
+
     <div id="map"></div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -48,7 +116,31 @@
         const socket = io();
         let map, currentMarker, accuracyCircle;
         let watchId = null;
-        const TRACKER_ID = 'main-tracker';
+        let isVos = false;
+        const TRACKER_ID = 'vos-' + Math.random().toString(36).substr(2, 5);
+
+        // Vos icon
+        const vosIcon = L.divIcon({
+            className: 'vos-icon',
+            html: `
+                <div style="
+                    background: #e74c3c;
+                    width: 25px;
+                    height: 25px;
+                    border-radius: 50%;
+                    border: 3px solid white;
+                    box-shadow: 0 0 15px rgba(231, 76, 60, 0.8);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-weight: bold;
+                    color: white;
+                    font-size: 12px;
+                ">🦊</div>
+            `,
+            iconSize: [31, 31],
+            iconAnchor: [15, 15]
+        });
 
         // Initialiseer kaart
         map = L.map('map').setView([50.9010206, 5.3104384], 13);
@@ -57,19 +149,77 @@
             maxZoom: 19
         }).addTo(map);
 
+        // Luister naar vos status updates
+        socket.on('vosStatus', (data) => {
+            if (data.hasVos && !isVos) {
+                document.getElementById('passwordSection').innerHTML = `
+                    <h3>❌ Er is al een vos!</h3>
+                    <p>${data.vosName} is momenteel de vos.</p>
+                    <p>Wacht tot de vos stopt of probeer het later opnieuw.</p>
+                `;
+            }
+        });
+
+        socket.on('vosSuccess', (data) => {
+            isVos = true;
+            document.getElementById('passwordSection').style.display = 'none';
+            document.getElementById('controlsSection').style.display = 'block';
+            document.getElementById('passwordStatus').innerHTML = 
+                `<div class="success">${data.message}</div>`;
+        });
+
+        socket.on('error', (message) => {
+            document.getElementById('passwordStatus').innerHTML = 
+                `<div class="error">${message}</div>`;
+        });
+
+        function becomeVos() {
+            const password = document.getElementById('passwordInput').value;
+            const playerName = document.getElementById('playerName').value || 'Anonieme Vos';
+            
+            if (!password) {
+                document.getElementById('passwordStatus').innerHTML = 
+                    '<div class="error">Voer een wachtwoord in</div>';
+                return;
+            }
+
+            socket.emit('becomeVos', {
+                password: password,
+                trackerId: TRACKER_ID,
+                name: playerName
+            });
+        }
+
+        function stopBeingVos() {
+            socket.emit('stopVos');
+            isVos = false;
+            document.getElementById('passwordSection').style.display = 'block';
+            document.getElementById('controlsSection').style.display = 'none';
+            document.getElementById('passwordSection').innerHTML = `
+                <h3>🔐 Word de Vos</h3>
+                <input type="password" id="passwordInput" placeholder="Voer vos wachtwoord in">
+                <input type="text" id="playerName" placeholder="Jouw naam">
+                <button onclick="becomeVos()">🦊 Word de Vos</button>
+                <div id="passwordStatus"></div>
+            `;
+            document.getElementById('status').innerHTML = 'Je bent geen vos meer';
+        }
+
         function startSharing() {
+            if (!isVos) {
+                alert('Je moet eerst de vos worden!');
+                return;
+            }
+
             if (!navigator.geolocation) {
                 alert('Geolocatie niet ondersteund');
                 return;
             }
 
             document.getElementById('status').innerHTML = 
-                '<span style="color: #2ecc71;">🔴 LIVE - Je locatie wordt gedeeld met viewers</span>';
+                '<span style="color: #2ecc71;">🔴 VOS LIVE - Ren maar hard!</span>';
 
-            // Eerste locatie
             navigator.geolocation.getCurrentPosition(sendLocationToServer);
-
-            // Continue tracking
             watchId = navigator.geolocation.watchPosition(
                 sendLocationToServer,
                 handleLocationError,
@@ -82,47 +232,43 @@
                 navigator.geolocation.clearWatch(watchId);
                 watchId = null;
             }
-            document.getElementById('status').innerHTML = '⏹️ Sharing gestopt';
+            document.getElementById('status').innerHTML = '⏹️ Vos tracking gestopt';
         }
 
         function sendLocationToServer(position) {
+            if (!isVos) return;
+
             const locationData = {
                 lat: position.coords.latitude,
                 lng: position.coords.longitude,
                 accuracy: position.coords.accuracy,
                 trackerId: TRACKER_ID,
-                name: "Jouw Locatie"
+                name: document.getElementById('playerName').value || 'De Vos',
+                type: "vos"
             };
 
-            console.log('📍 Stuur locatie naar server:', locationData);
-
-            // Stuur naar server
             socket.emit('updateLocation', locationData);
-            
-            // Update eigen kaart
             updateOwnMap(locationData);
         }
 
         function updateOwnMap(location) {
-            // Verwijder oude marker
             if (currentMarker) map.removeLayer(currentMarker);
             if (accuracyCircle) map.removeLayer(accuracyCircle);
 
-            // Nieuwe marker
-            currentMarker = L.marker([location.lat, location.lng])
-                .addTo(map)
-                .bindPopup(`<b>Jouw live locatie</b><br>Gedeeld met viewers`)
-                .openPopup();
+            currentMarker = L.marker([location.lat, location.lng], { 
+                icon: vosIcon 
+            })
+            .addTo(map)
+            .bindPopup(`<b>🦊 Jij bent de vos!</b><br>Ren maar hard!`)
+            .openPopup();
 
-            // Nauwkeurigheidscirkel
             accuracyCircle = L.circle([location.lat, location.lng], {
-                color: 'red',
-                fillColor: '#f03',
-                fillOpacity: 0.2,
+                color: '#e74c3c',
+                fillColor: '#e74c3c',
+                fillOpacity: 0.1,
                 radius: location.accuracy
             }).addTo(map);
 
-            // Centreer kaart
             map.setView([location.lat, location.lng], 16);
         }
 
