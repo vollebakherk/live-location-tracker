@@ -40,6 +40,12 @@ function initializeZoekerGame() {
             onError: handleError
         });
 
+        // Maak functies globaal beschikbaar
+        window.startSharing = startSharing;
+        window.stopSharing = stopSharing;
+        window.centerOnVos = centerOnVos;
+        window.resetView = resetView;
+
         console.log('✅ Zoeker game klaar!');
         
     } catch (error) {
@@ -120,7 +126,7 @@ function updateVosDistance() {
 }
 
 // Globale functies voor buttons
-window.startSharing = function() {
+function startSharing() {
     console.log('📍 Start zoeken clicked');
     
     if (!navigator.geolocation) {
@@ -143,7 +149,7 @@ window.startSharing = function() {
     );
 }
 
-window.stopSharing = function() {
+function stopSharing() {
     console.log('⏹️ Stop zoeken');
     if (watchId) {
         navigator.geolocation.clearWatch(watchId);
@@ -157,7 +163,7 @@ window.stopSharing = function() {
     }
 }
 
-window.centerOnVos = function() {
+function centerOnVos() {
     if (vosLocation) {
         map.setView([vosLocation.lat, vosLocation.lng], 14);
         console.log('🎯 Handmatig gecentreerd op vos');
@@ -166,7 +172,7 @@ window.centerOnVos = function() {
     }
 }
 
-window.resetView = function() {
+function resetView() {
     map.setView([50.9010206, 5.3104384], 13);
     window.vosIsGecentreerd = false;
     console.log('🗺️ Weergave gereset');
