@@ -302,29 +302,35 @@
                     .bindPopup(`<b>👤 Jij (${playerName})</b><br>Je bent op zoek naar de vos!`);
                 }
 
-                function updateMap(location) {
-                    const markerId = location.trackerId;
-                    
-                    if (markers[markerId]) {
-                        map.removeLayer(markers[markerId]);
-                    }
+              function updateMap(location) {
+    const markerId = location.trackerId;
+    
+    if (markers[markerId]) {
+        map.removeLayer(markers[markerId]);
+    }
 
-                    const iconType = location.isVos ? icons.vos : icons.zoeker;
-                    const popupText = location.isVos 
-                        ? `<b>🦊 DE VOS!</b><br>${location.name}<br><small>Ga hem vangen!</small>` 
-                        : `<b>👤 ${location.name}</b><br><small>Mede-zoeker</small>`;
+    const iconType = location.isVos ? icons.vos : icons.zoeker;
+    const popupText = location.isVos 
+        ? `<b>🦊 DE VOS!</b><br>${location.name}<br><small>Ga hem vangen!</small>` 
+        : `<b>👤 ${location.name}</b><br><small>Mede-zoeker</small>`;
 
-                    markers[markerId] = L.marker([location.lat, location.lng], { 
-                        icon: iconType 
-                    })
-                    .addTo(map)
-                    .bindPopup(popupText);
+    markers[markerId] = L.marker([location.lat, location.lng], { 
+        icon: iconType 
+    })
+    .addTo(map)
+    .bindPopup(popupText);
 
-                    if (location.isVos) {
-                        map.setView([location.lat, location.lng], 14);
-                        updateVosDistance();
-                    }
-                }
+    // VOS: Alleen eerste keer centreren
+    if (location.isVos && !window.vosIsGecentreerd) {
+        map.setView([location.lat, location.lng], 14);
+        window.vosIsGecentreerd = true;
+        console.log('🗺️ Eerste keer vos gecentreerd');
+    }
+    
+    if (location.isVos) {
+        updateVosDistance();
+    }
+}
 
                 function updateVosDistance() {
                     if (!vosLocation || !markers[TRACKER_ID]) return;
