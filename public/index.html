@@ -272,35 +272,25 @@
             .bindPopup(`<b>👤 Jij (${playerName})</b><br>Je bent op zoek naar de vos!`);
         }
 
-        function updateMap(location) {
-            const markerId = location.trackerId;
-            
-            // Verwijder oude marker
-            if (markers[markerId]) {
-                map.removeLayer(markers[markerId]);
-            }
+      socket.on('locationUpdate', (location) => {
+    const markerId = location.trackerId;
+    
+    if (markers[markerId]) {
+        map.removeLayer(markers[markerId]);
+    }
 
-            // Bepaal icon type
-            const iconType = location.isVos ? icons.vos : icons.zoeker;
-            const popupText = location.isVos 
-                ? `<b>🦊 DE VOS!</b><br>${location.name}<br><small>Ga hem vangen!</small>` 
-                : `<b>👤 ${location.name}</b><br><small>Mede-zoeker</small>`;
+    const iconType = location.isVos ? icons.vos : icons.zoeker;
+    const popupText = location.isVos 
+        ? `<b>🦊 DE VOS!</b><br>${location.name}` 
+        : `<b>👤 ${location.name}</b>`;
 
-            // Nieuwe marker
-            markers[markerId] = L.marker([location.lat, location.lng], { 
-                icon: iconType 
-            })
-            .addTo(map)
-            .bindPopup(popupText);
+    markers[markerId] = L.marker([location.lat, location.lng], { icon: iconType })
+        .addTo(map)
+        .bindPopup(popupText);
 
-            // Als het de vos is, centreer de kaart en toon alert
-            if (location.isVos) {
-                map.setView([location.lat, location.lng], 14);
-                
-                // Toon afstandsinformatie
-                updateVosDistance(location);
-            }
-        }
+    // OVERZICHT: Nooit automatisch centreren - gebruiker bepaalt altijd
+    // Verwijder map.setView compleet!
+});
 
         function updateVosDistance(vosLoc) {
             if (!currentMarker || !markers[TRACKER_ID]) return;
