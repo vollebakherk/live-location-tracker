@@ -1,126 +1,117 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Live Locatie Viewer</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            font-family: Arial, sans-serif; 
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-        .header {
-            padding: 15px;
-            background: #27ae60;
-            color: white;
-            text-align: center;
-        }
-        .info {
-            padding: 10px;
-            background: #34495e;
-            color: white;
-            font-size: 14px;
-        }
-        #map { flex-grow: 1; width: 100%; }
-        .live-badge {
-            background: #e74c3c;
-            padding: 2px 8px;
-            border-radius: 10px;
-            animation: pulse 1.5s infinite;
-        }
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
-        }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h1>🌍 Live Locatie Tracker</h1>
-    </div>
-    <div class="info" id="status">
-        Verbinden met tracker... <span class="live-badge">LIVE</span>
-    </div>
-    <div id="map"></div>
+const socket = io();
+let map, currentMarker, accuracyCircle;
+const TRACKER_ID = 'main-tracker';
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="/socket.io/socket.io.js"></script>
-    <script>
-        const socket = io();
-        let map, currentMarker, accuracyCircle;
-
-       // Initialiseer kaart
+// Initialize map
 map = L.map('map').setView([50.9010206, 5.3104384], 13);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap contributors',
     maxZoom: 19
 }).addTo(map);
 
-        // Luister naar locatie updates
-        socket.on('locationUpdate', (location) => {
-            updateMap(location);
-            updateStatus(location);
-        });
+// Toon verbindingsstatus
+document.getElementById('status').innerHTML = '🟡 Verbinden met tracker...';
 
-        function updateMap(location) {
-            // Verwijder oude marker
-            if (currentMarker) map.removeLayer(currentMarker);
-            if (accuracyCircle) map.removeLayer(accuracyCircle);
+// Socket events
+socket.on('connect', () => {
+    console.log('✅ Verbonden met server');
+    document.getElementById('status').innerHTML = '🟢 Verbonden - wacht op locatie...';
+    
+    // JOIN de tracker room direct na connectie
+    socket.emit('joinTracker', TRACKER_ID);
+    console.log('📡 Joined tracker room:', TRACKER_ID);
+});
 
-            // Pulsierende marker
-            const liveIcon = L.divIcon({
-                className: 'live-marker',
-                html: `
-                    <div style="
-                        background: #e74c3c;
-                        width: 20px;
-                        height: 20px;
-                        border-radius: 50%;
-                        border: 3px solid white;
-                        box-shadow: 0 0 20px rgba(231, 76, 60, 0.8);
-                        animation: pulse 1.5s infinite;
-                    "></div>
-                `,
-                iconSize: [26, 26],
-                iconAnchor: [13, 13]
-            });
+socket.on('locationUpdate', (location) => {
+    console.log('📍 Locatie ontvangen:', location);
+    updateMap(location);
+    updateStatus(location);
+});
 
-            // Nieuwe marker
-            currentMarker = L.marker([location.lat, location.lng], { icon: liveIcon })
-                .addTo(map)
-                .bindPopup(`
-                    <b>📍 ${location.name || 'Tracker'}</b><br>
-                    Lat: ${location.lat.toFixed(6)}<br>
-                    Lng: ${location.lng.toFixed(6)}<br>
-                    Nauwkeurigheid: ${Math.round(location.accuracy)}m<br>
-                    Laatste update: ${new Date(location.timestamp).toLocaleTimeString()}
-                `)
-                .openPopup();
+socket.on('disconnect', () => {
+    console.log('🔴 Verbinding verbroken');
+    document.getElementById('status').innerHTML = '🔴 Verbinding verbroken - probeer opnieuw laden';
+});
 
-            // Nauwkeurigheidscirkel
-            accuracyCircle = L.circle([location.lat, location.lng], {
-                color: '#e74c3c',
-                fillColor: '#e74c3c',
-                fillOpacity: 0.1,
-                radius: location.accuracy
-            }).addTo(map);
+socket.on('connect_error', (error) => {
+    console.error('❌ Verbindings fout:', error);
+    document.getElementById('status').innerHTML = '❌ Verbindings fout - refresh pagina';
+});
 
-            // Centreer kaart
-            map.setView([location.lat, location.lng], 16);
-        }
+// Update kaart met locatie
+function updateMap(location) {
+    // Verwijder oude layers
+    if (currentMarker) map.removeLayer(currentMarker);
+    if (accuracyCircle) map.removeLayer(accuracyCircle);
 
-        function updateStatus(location) {
-            document.getElementById('status').innerHTML = `
-                <span class="live-badge">LIVE</span> 
-                ${location.name || 'Tracker'} - 
-                ${location.lat.toFixed(4)}, ${location.lng.toFixed(4)} - 
-                ${Math.round(location.accuracy)}m nauwkeurig - 
-                Laatste update: ${new Date(location.timestamp).toLocaleTimeString()}
-            `;
-        }
-    </script>
-</body>
-</html>
+    // Pulsierende marker
+    const liveIcon = L.divIcon({
+        className: 'live-marker',
+        html: `
+            <div style="
+                background: #e74c3c;
+                width: 20px;
+                height: 20px;
+                border-radius: 50%;
+                border: 3px solid white;
+                box-shadow: 0 0 20px rgba(231, 76, 60, 0.8);
+                animation: pulse 1.5s infinite;
+            "></div>
+        `,
+        iconSize: [26, 26],
+        iconAnchor: [13, 13]
+    });
+
+    // Nieuwe marker
+    currentMarker = L.marker([location.lat, location.lng], { icon: liveIcon })
+        .addTo(map)
+        .bindPopup(`
+            <div style="min-width: 250px;">
+                <b>📍 ${location.name || 'Live Tracker'}</b><br>
+                Lat: ${location.lat.toFixed(6)}<br>
+                Lng: ${location.lng.toFixed(6)}<br>
+                Nauwkeurigheid: ${Math.round(location.accuracy)}m<br>
+                Tijd: ${new Date(location.timestamp).toLocaleTimeString()}
+            </div>
+        `)
+        .openPopup();
+
+    // Nauwkeurigheidscirkel
+    accuracyCircle = L.circle([location.lat, location.lng], {
+        color: '#e74c3c',
+        fillColor: '#e74c3c',
+        fillOpacity: 0.1,
+        weight: 1,
+        radius: location.accuracy
+    }).addTo(map);
+
+    // Centreer kaart op locatie
+    map.setView([location.lat, location.lng], 16);
+}
+
+function updateStatus(location) {
+    document.getElementById('status').innerHTML = `
+        <span style="color: #27ae60;">
+            🔴 LIVE - ${location.name || 'Tracker'} - 
+            ${location.lat.toFixed(4)}, ${location.lng.toFixed(4)} - 
+            ${Math.round(location.accuracy)}m - 
+            ${new Date(location.timestamp).toLocaleTimeString()}
+        </span>
+    `;
+}
+
+// Vraag om locatie update (voor testing)
+function requestLocationUpdate() {
+    socket.emit('requestLocation', TRACKER_ID);
+    console.log('🔄 Locatie update aangevraagd');
+}
+
+// Auto-request locatie elke 10 seconden (fallback)
+setInterval(() => {
+    if (socket.connected) {
+        requestLocationUpdate();
+    }
+}, 10000);
+
+// Initial request
+setTimeout(requestLocationUpdate, 2000);
