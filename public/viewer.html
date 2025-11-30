@@ -49,17 +49,117 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="/socket.io/socket.io.js"></script>
 <script>
+    console.log('🎯 Viewer wordt geladen...');
+    
     const socket = io();
     let map, currentMarker, accuracyCircle;
+    const TRACKER_ID = 'main-tracker';
 
     // Initialiseer kaart
     map = L.map('map').setView([50.9010206, 5.3104384], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap contributors',
-    maxZoom: 19
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19
     }).addTo(map);
-    
-    // ... de rest van je code ...
+
+    console.log('🗺️ Kaart geïnitialiseerd');
+    document.getElementById('status').innerHTML = '🟡 Verbinden met tracker...';
+
+    // Socket events
+    socket.on('connect', () => {
+        console.log('✅ Verbonden met server! Socket ID:', socket.id);
+        document.getElementById('status').innerHTML = '🟢 Verbonden - wacht op locatie...';
+        
+        // JOIN de tracker room
+        socket.emit('joinTracker', TRACKER_ID);
+        console.log('📡 Joined tracker room:', TRACKER_ID);
+    });
+
+    // Luister naar locatie updates
+    socket.on('locationUpdate', (location) => {
+        console.log('📍 LOCATIE ONTVANGEN:', location);
+        updateMap(location);
+        updateStatus(location);
+    });
+
+    socket.on('disconnect', () => {
+        console.log('🔴 Verbinding verbroken');
+        document.getElementById('status').innerHTML = '🔴 Verbinding verbroken - refresh pagina';
+    });
+
+    socket.on('connect_error', (error) => {
+        console.error('❌ Verbindings fout:', error);
+        document.getElementById('status').innerHTML = '❌ Verbindings fout';
+    });
+
+    function updateMap(location) {
+        console.log('🗺️ Kaart bijwerken met locatie:', location.lat, location.lng);
+        
+        // Verwijder oude marker
+        if (currentMarker) map.removeLayer(currentMarker);
+        if (accuracyCircle) map.removeLayer(accuracyCircle);
+
+        // Pulsierende marker
+        const liveIcon = L.divIcon({
+            className: 'live-marker',
+            html: `
+                <div style="
+                    background: #e74c3c;
+                    width: 20px;
+                    height: 20px;
+                    border-radius: 50%;
+                    border: 3px solid white;
+                    box-shadow: 0 0 20px rgba(231, 76, 60, 0.8);
+                    animation: pulse 1.5s infinite;
+                "></div>
+            `,
+            iconSize: [26, 26],
+            iconAnchor: [13, 13]
+        });
+
+        // Nieuwe marker
+        currentMarker = L.marker([location.lat, location.lng], { icon: liveIcon })
+            .addTo(map)
+            .bindPopup(`
+                <b>📍 ${location.name || 'Tracker'}</b><br>
+                Lat: ${location.lat.toFixed(6)}<br>
+                Lng: ${location.lng.toFixed(6)}<br>
+                Nauwkeurigheid: ${Math.round(location.accuracy)}m<br>
+                Laatste update: ${new Date(location.timestamp).toLocaleTimeString()}
+            `)
+            .openPopup();
+
+        // Nauwkeurigheidscirkel
+        accuracyCircle = L.circle([location.lat, location.lng], {
+            color: '#e74c3c',
+            fillColor: '#e74c3c',
+            fillOpacity: 0.1,
+            radius: location.accuracy
+        }).addTo(map);
+
+        // Centreer kaart
+        map.setView([location.lat, location.lng], 16);
+        
+        console.log('✅ Kaart succesvol bijgewerkt');
+    }
+
+    function updateStatus(location) {
+        document.getElementById('status').innerHTML = `
+            <span class="live-badge">LIVE</span> 
+            ${location.name || 'Tracker'} - 
+            ${location.lat.toFixed(4)}, ${location.lng.toFixed(4)} - 
+            ${Math.round(location.accuracy)}m nauwkeurig - 
+            Laatste update: ${new Date(location.timestamp).toLocaleTimeString()}
+        `;
+    }
+
+    // Vraag om locatie updates
+    setInterval(() => {
+        if (socket.connected) {
+            console.log('🔄 Vraag locatie update...');
+            socket.emit('requestLocation', TRACKER_ID);
+        }
+    }, 10000);
 </script>
 </body>
 </html>
