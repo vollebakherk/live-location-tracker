@@ -12,12 +12,12 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Store active trackers
 const activeTrackers = new Map();
-let currentVos = null; // Houd bij wie de vos is
-const VOS_PASSWORD = 'vos123'; // Wachtwoord om vos te worden
+let currentVos = null;
+const VOS_PASSWORD = 'vos123'; // Wijzig dit wachtwoord!
 
 // Routes
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'viewer.html'));
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 app.get('/tracker', (req, res) => {
@@ -38,26 +38,19 @@ app.get('/health', (req, res) => {
     });
 });
 
-app.get('/api/vos-status', (req, res) => {
-    res.json({ 
-        hasVos: !!currentVos,
-        vosName: currentVos?.name || null
-    });
-});
-
-// Socket.io for real-time communication
+// Socket.io
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
     
-    // Stuur direct de huidige vos status
+    // Stuur vos status
     socket.emit('vosStatus', { hasVos: !!currentVos, vosName: currentVos?.name });
     
-    // Stuur alle actieve trackers
+    // Stuur actieve trackers
     activeTrackers.forEach((tracker) => {
         socket.emit('locationUpdate', tracker);
     });
     
-    // Word de vos (met wachtwoord)
+    // Word de vos
     socket.on('becomeVos', (data) => {
         if (currentVos) {
             socket.emit('error', 'Er is al een vos! Er kan maar één vos zijn.');
@@ -69,26 +62,23 @@ io.on('connection', (socket) => {
             return;
         }
         
-        // Maak deze speler de vos
         currentVos = {
             id: data.trackerId,
             name: data.name,
             socketId: socket.id
         };
         
-        console.log('🦊 Nieuwe vos aangesteld:', currentVos.name);
-        
-        // Broadcast naar iedereen dat er een nieuwe vos is
+        console.log('🦊 Nieuwe vos:', currentVos.name);
         io.emit('vosStatus', { 
             hasVos: true, 
             vosName: currentVos.name,
             message: `🦊 ${currentVos.name} is nu de vos!`
         });
         
-        socket.emit('vosSuccess', { message: 'Je bent nu de vos! Ren maar hard!' });
+        socket.emit('vosSuccess', { message: 'Je bent nu de vos!' });
     });
     
-    // Update location from tracker
+    // Update location
     socket.on('updateLocation', (data) => {
         const trackerData = {
             ...data,
@@ -99,47 +89,36 @@ io.on('connection', (socket) => {
         };
         
         activeTrackers.set(trackerData.id, trackerData);
-        
-        // Broadcast naar ALLE clients
         io.emit('locationUpdate', trackerData);
-        
-        console.log('📍 Location updated:', trackerData.id, trackerData.isVos ? '(VOS)' : '(Zoeker)');
     });
     
-    // Stop being vos
+    // Stop vos
     socket.on('stopVos', () => {
         if (currentVos && currentVos.socketId === socket.id) {
             console.log('🦊 Vos gestopt:', currentVos.name);
-            currentVos = null;
-            
-            // Broadcast naar iedereen dat de vos weg is
-            io.emit('vosStatus', { 
-                hasVos: false, 
-                message: 'De vos is ontsnapt! Er is nu geen vos.'
-            });
-        }
-    });
-    
-    // Handle disconnect
-    socket.on('disconnect', () => {
-        console.log('User disconnected:', socket.id);
-        
-        // Als de vos disconnect, verwijder de vos
-        if (currentVos && currentVos.socketId === socket.id) {
-            console.log('🦊 Vos disconnected:', currentVos.name);
             currentVos = null;
             io.emit('vosStatus', { 
                 hasVos: false, 
                 message: 'De vos is ontsnapt!'
             });
         }
+    });
+    
+    // Disconnect
+    socket.on('disconnect', () => {
+        console.log('User disconnected:', socket.id);
         
-        // Clean up inactive trackers
+        if (currentVos && currentVos.socketId === socket.id) {
+            console.log('🦊 Vos disconnected');
+            currentVos = null;
+            io.emit('vosStatus', { hasVos: false });
+        }
+        
+        // Cleanup
         setTimeout(() => {
             for (const [trackerId, tracker] of activeTrackers) {
                 if (tracker.socketId === socket.id) {
                     activeTrackers.delete(trackerId);
-                    console.log('Cleaned up tracker:', trackerId);
                 }
             }
         }, 300000);
@@ -149,7 +128,4 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`🚀 Vossenjacht server running on port ${PORT}`);
-    console.log(`🦊 Vos: http://localhost:${PORT}/tracker`);
-    console.log(`👤 Zoekers: http://localhost:${PORT}/zoeker`);
-    console.log(`👀 Viewer: http://localhost:${PORT}`);
 });
