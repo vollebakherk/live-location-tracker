@@ -9,7 +9,8 @@ const io = socketIo(server);
 
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
-
+app.use('/js', express.static(path.join(__dirname, 'public', 'js')));
+app.use('/css', express.static(path.join(__dirname, 'public', 'css')));
 // Store active trackers
 const activeTrackers = new Map();
 let currentVos = null;
