@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Vossenjacht - Live Overzicht</title>
+    <title>Vossenjacht - Zoeker</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -15,77 +15,152 @@
         }
         .header {
             padding: 20px;
-            background: #27ae60;
+            background: #3498db;
             text-align: center;
         }
-        .info {
+        .controls {
             padding: 15px;
             background: #34495e;
-            font-size: 14px;
-        }
-        .links {
-            padding: 15px;
-            background: #2980b9;
             text-align: center;
         }
-        .links a {
-            color: white;
-            text-decoration: none;
-            margin: 0 15px;
-            padding: 10px 20px;
-            background: rgba(255,255,255,0.2);
-            border-radius: 5px;
-            display: inline-block;
+        .player-info {
+            padding: 10px;
+            background: #2980b9;
+            text-align: center;
+            font-size: 14px;
         }
-        .links a:hover {
-            background: rgba(255,255,255,0.3);
+        button {
+            padding: 12px 25px;
+            margin: 5px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        button:hover { background: #2980b9; }
+        button.stop { background: #95a5a6; }
+        button.stop:hover { background: #7f8c8d; }
+        #status { 
+            margin-top: 10px; 
+            font-size: 14px;
+            padding: 10px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 5px;
+            min-height: 40px;
         }
         #map { flex-grow: 1; width: 100%; }
-        .vos-badge { background: #e74c3c; }
-        .zoeker-badge { background: #3498db; }
+        .vos-alert {
+            background: #e74c3c;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+        .distance-info {
+            background: #27ae60;
+            padding: 8px 12px;
+            border-radius: 5px;
+            margin: 5px 0;
+        }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>🌍 Vossenjacht - Live Overzicht</h1>
-        <p>Volg alle spelers in real-time</p>
+        <h1>🎯 Vossenjacht - ZOEKER</h1>
+        <p>Vind de vos! Jouw locatie wordt gedeeld met andere zoekers.</p>
     </div>
-    
-    <div class="links">
-        <a href="/tracker" target="_blank">🦊 Word de Vos</a>
-        <a href="/zoeker" target="_blank">👤 Word Zoeker</a>
+
+    <div class="player-info">
+        <strong>👤 Jouw spelernaam:</strong> <span id="playerNameDisplay">Laden...</span>
     </div>
-    
-    <div class="info" id="status">
-        Verbinden... <span id="vosStatus">Geen vos actief</span>
+
+    <div class="controls">
+        <button onclick="startSharing()">📍 Start Zoeken</button>
+        <button class="stop" onclick="stopSharing()">⏹️ Stop Zoeken</button>
+        <div id="status">Klik op "Start Zoeken" om te beginnen</div>
     </div>
-    
+
     <div id="map"></div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
-        let map;
-        const markers = {};
+        let map, currentMarker, accuracyCircle;
+        let watchId = null;
+        let playerName = '';
+        const TRACKER_ID = 'zoeker-' + Math.random().toString(36).substr(2, 8);
         
-        // Icons
+        // Genereer een leuke spelernaam
+        const zoekerNamen = [
+            "Speurder", "Jager", "Verkenner", "Trackster", "Zoekertje", 
+            "Speurneus", "Jachtluipaard", "Spoorzoeker", "Detective", "Scout",
+            "Pathfinder", "Navigator", "Ontdekker", "Verkenner", "Speurder"
+        ];
+        const randomNaam = zoekerNamen[Math.floor(Math.random() * zoekerNamen.length)];
+        const randomNummer = Math.floor(Math.random() * 99) + 1;
+        playerName = `${randomNaam}${randomNummer}`;
+        document.getElementById('playerNameDisplay').textContent = playerName;
+
+        // Custom icons
         const icons = {
             vos: L.divIcon({
                 className: 'vos-icon',
-                html: `<div style="background: #e74c3c; width: 25px; height: 25px; border-radius: 50%; border: 3px solid white; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; font-size: 12px;">🦊</div>`,
+                html: `
+                    <div style="
+                        background: #e74c3c;
+                        width: 25px;
+                        height: 25px;
+                        border-radius: 50%;
+                        border: 3px solid white;
+                        box-shadow: 0 0 20px rgba(231, 76, 60, 0.8);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-weight: bold;
+                        color: white;
+                        font-size: 12px;
+                    ">🦊</div>
+                `,
                 iconSize: [31, 31],
                 iconAnchor: [15, 15]
             }),
             zoeker: L.divIcon({
                 className: 'zoeker-icon',
-                html: `<div style="background: #3498db; width: 22px; height: 22px; border-radius: 50%; border: 3px solid white; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; font-size: 10px;">👤</div>`,
+                html: `
+                    <div style="
+                        background: #3498db;
+                        width: 22px;
+                        height: 22px;
+                        border-radius: 50%;
+                        border: 3px solid white;
+                        box-shadow: 0 0 10px rgba(52, 152, 219, 0.8);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-weight: bold;
+                        color: white;
+                        font-size: 10px;
+                    ">👤</div>
+                `,
                 iconSize: [28, 28],
                 iconAnchor: [14, 14]
             })
         };
 
-        // Kaart
+        const markers = {}; // Bewaar alle markers
+        let vosLocation = null; // Houd de vos locatie bij
+
+        // Initialiseer kaart
         map = L.map('map').setView([50.9010206, 5.3104384], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors',
@@ -93,32 +168,197 @@
         }).addTo(map);
 
         // Socket events
+        socket.on('connect', () => {
+            console.log('✅ Verbonden met vossenjacht server');
+            document.getElementById('status').innerHTML = '🟢 Verbonden - wacht op vos...';
+        });
+
         socket.on('vosStatus', (data) => {
-            document.getElementById('vosStatus').innerHTML = data.hasVos 
-                ? `<span style="color: #e74c3c;">🦊 Vos: ${data.vosName}</span>`
-                : '<span style="color: #95a5a6;">Geen vos actief</span>';
+            if (data.hasVos) {
+                document.getElementById('status').innerHTML = 
+                    `<div class="vos-alert">🦊 VOS ACTIEF: ${data.vosName} - Ga op jacht!</div>`;
+            } else {
+                document.getElementById('status').innerHTML = 
+                    '🟡 Wacht op vos... Er is nog geen vos actief.';
+            }
         });
 
         socket.on('locationUpdate', (location) => {
+            updateMap(location);
+            
+            // Als dit de vos is, sla locatie op en bereken afstand
+            if (location.isVos) {
+                vosLocation = location;
+                updateVosDistance(location);
+            }
+        });
+
+        function startSharing() {
+            if (!navigator.geolocation) {
+                alert('Geolocatie wordt niet ondersteund door je browser');
+                return;
+            }
+
+            document.getElementById('status').innerHTML = 
+                '<span style="color: #2ecc71;">🔴 ZOEKEN LIVE - Je ziet alle spelers</span>';
+
+            // Eerste locatie
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    sendLocationToServer(position);
+                    startWatching();
+                },
+                (error) => {
+                    handleLocationError(error);
+                },
+                { enableHighAccuracy: true, timeout: 10000 }
+            );
+        }
+
+        function startWatching() {
+            watchId = navigator.geolocation.watchPosition(
+                sendLocationToServer,
+                handleLocationError,
+                { 
+                    enableHighAccuracy: true,
+                    timeout: 5000,
+                    maximumAge: 1000
+                }
+            );
+        }
+
+        function stopSharing() {
+            if (watchId) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
+            document.getElementById('status').innerHTML = '⏹️ Zoeken gestopt';
+            
+            // Verwijder eigen marker van kaart
+            if (markers[TRACKER_ID]) {
+                map.removeLayer(markers[TRACKER_ID]);
+                delete markers[TRACKER_ID];
+            }
+        }
+
+        function sendLocationToServer(position) {
+            const locationData = {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude,
+                accuracy: position.coords.accuracy,
+                trackerId: TRACKER_ID,
+                name: playerName,
+                type: "zoeker"
+            };
+
+            console.log('👤 Zoeker locatie:', locationData);
+            socket.emit('updateLocation', locationData);
+            
+            // Update eigen marker op kaart
+            updateOwnMarker(locationData);
+        }
+
+        function updateOwnMarker(location) {
+            // Verwijder oude eigen marker
+            if (markers[TRACKER_ID]) {
+                map.removeLayer(markers[TRACKER_ID]);
+            }
+
+            // Nieuwe eigen marker
+            markers[TRACKER_ID] = L.marker([location.lat, location.lng], { 
+                icon: icons.zoeker 
+            })
+            .addTo(map)
+            .bindPopup(`<b>👤 Jij (${playerName})</b><br>Je bent op zoek naar de vos!`);
+        }
+
+        function updateMap(location) {
             const markerId = location.trackerId;
             
+            // Verwijder oude marker
             if (markers[markerId]) {
                 map.removeLayer(markers[markerId]);
             }
 
+            // Bepaal icon type
             const iconType = location.isVos ? icons.vos : icons.zoeker;
             const popupText = location.isVos 
-                ? `<b>🦊 DE VOS!</b><br>${location.name}` 
-                : `<b>👤 ${location.name}</b>`;
+                ? `<b>🦊 DE VOS!</b><br>${location.name}<br><small>Ga hem vangen!</small>` 
+                : `<b>👤 ${location.name}</b><br><small>Mede-zoeker</small>`;
 
-            markers[markerId] = L.marker([location.lat, location.lng], { icon: iconType })
-                .addTo(map)
-                .bindPopup(popupText);
+            // Nieuwe marker
+            markers[markerId] = L.marker([location.lat, location.lng], { 
+                icon: iconType 
+            })
+            .addTo(map)
+            .bindPopup(popupText);
 
+            // Als het de vos is, centreer de kaart en toon alert
             if (location.isVos) {
-                map.setView([location.lat, location.lng], 16);
+                map.setView([location.lat, location.lng], 14);
+                
+                // Toon afstandsinformatie
+                updateVosDistance(location);
             }
-        });
+        }
+
+        function updateVosDistance(vosLoc) {
+            if (!currentMarker || !markers[TRACKER_ID]) return;
+            
+            const zoekerLoc = markers[TRACKER_ID].getLatLng();
+            const distance = calculateDistance(
+                zoekerLoc.lat, zoekerLoc.lng,
+                vosLoc.lat, vosLoc.lng
+            );
+            
+            const distanceText = distance < 1000 
+                ? `${Math.round(distance)} meter` 
+                : `${(distance/1000).toFixed(1)} km`;
+                
+            document.getElementById('status').innerHTML = 
+                `<div class="vos-alert">
+                    🦊 VOS GEVONDEN! - ${distanceText} van jou
+                 </div>`;
+        }
+
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371000; // Aardstraal in meters
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = 
+                Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        function handleLocationError(error) {
+            console.error('Locatie fout:', error);
+            let message = 'Locatie fout: ';
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    message += 'Toegang geweigerd. Sta locatie toe in browser instellingen.';
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    message += 'Locatie informatie niet beschikbaar.';
+                    break;
+                case error.TIMEOUT:
+                    message += 'Locatie request timeout.';
+                    break;
+                default:
+                    message += 'Onbekende fout.';
+            }
+            document.getElementById('status').innerHTML = 
+                `<span style="color: #e74c3c;">❌ ${message}</span>`;
+        }
+
+        // Vraag regelmatig om updates
+        setInterval(() => {
+            if (socket.connected) {
+                socket.emit('requestUpdate');
+            }
+        }, 10000);
     </script>
 </body>
 </html>
