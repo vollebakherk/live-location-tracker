@@ -15,7 +15,6 @@ function initializeVosTracker() {
     try {
         socket = io();
         map = initializeMap();
-        const vosIcon = createVosIcon();
 
         console.log('🆔 Vos Tracker ID:', TRACKER_ID);
 
@@ -25,6 +24,7 @@ function initializeVosTracker() {
             },
             onVosStatus: handleVosStatus,
             onVosSuccess: handleVosSuccess,
+            onLocationUpdate: handleLocationUpdate, // ← BELANGRIJK: ontvang andere spelers
             onError: handleError
         });
 
@@ -69,7 +69,56 @@ function handleError(message) {
         `<div class="error">${message}</div>`;
 }
 
-// FUNCTIES VOOR BUTTONS - moeten GLOBAAL zijn
+// NIEUW: Ontvang locaties van andere spelers
+function handleLocationUpdate(location) {
+    // Als het niet de vos zelf is, toon de marker
+    if (location.trackerId !== TRACKER_ID) {
+        updateOtherPlayerMarker(location);
+    }
+}
+
+function updateOtherPlayerMarker(location) {
+    const markerId = location.trackerId;
+    
+    // Verwijder oude marker als die er is
+    if (window.otherMarkers && window.otherMarkers[markerId]) {
+        map.removeLayer(window.otherMarkers[markerId]);
+    }
+    
+    // Maak otherMarkers object als het niet bestaat
+    if (!window.otherMarkers) {
+        window.otherMarkers = {};
+    }
+    
+    // Bepaal icon type
+    const iconType = location.isVos ? createVosIcon() : createZoekerIcon();
+    const popupText = location.isVos 
+        ? `<b>🦊 DE VOS?!</b><br>${location.name}<br><small>Hoe kan dit? Er kan maar 1 vos zijn!</small>` 
+        : `<b>👤 ${location.name}</b><br><small>Zoeker - afstand: ${calculateDistanceToPlayer(location)}m</small>`;
+    
+    // Voeg marker toe
+    window.otherMarkers[markerId] = L.marker([location.lat, location.lng], { 
+        icon: iconType 
+    })
+    .addTo(map)
+    .bindPopup(popupText);
+    
+    console.log('👤 Andere speler toegevoegd:', location.name);
+}
+
+function calculateDistanceToPlayer(otherLocation) {
+    if (!currentMarker) return '?';
+    
+    const vosLocation = currentMarker.getLatLng();
+    const distance = calculateDistance(
+        vosLocation.lat, vosLocation.lng,
+        otherLocation.lat, otherLocation.lng
+    );
+    
+    return Math.round(distance);
+}
+
+// FUNCTIES VOOR BUTTONS
 function becomeVos() {
     console.log('🦊 Word vos clicked');
     const password = document.getElementById('passwordInput').value;
@@ -191,53 +240,4 @@ function handleLocationError(error) {
     console.error('❌ Locatie fout:', error);
     document.getElementById('status').innerHTML = 
         '<span style="color: #e74c3c;">❌ Locatie fout: ' + error.message + '</span>';
-}
-// Voeg toe aan vos-tracker.js (na de andere functies)
-
-function handleLocationUpdate(location) {
-    // Als het niet de vos zelf is, toon de marker
-    if (location.trackerId !== TRACKER_ID) {
-        updateOtherPlayerMarker(location);
-    }
-}
-
-function updateOtherPlayerMarker(location) {
-    const markerId = location.trackerId;
-    
-    // Verwijder oude marker als die er is
-    if (window.otherMarkers && window.otherMarkers[markerId]) {
-        map.removeLayer(window.otherMarkers[markerId]);
-    }
-    
-    // Maak otherMarkers object als het niet bestaat
-    if (!window.otherMarkers) {
-        window.otherMarkers = {};
-    }
-    
-    // Bepaal icon type
-    const iconType = location.isVos ? createVosIcon() : createZoekerIcon();
-    const popupText = location.isVos 
-        ? `<b>🦊 DE VOS?!</b><br>${location.name}<br><small>Hoe kan dit? Er kan maar 1 vos zijn!</small>` 
-        : `<b>👤 ${location.name}</b><br><small>Zoeker - afstand: ${calculateDistanceToPlayer(location)}m</small>`;
-    
-    // Voeg marker toe
-    window.otherMarkers[markerId] = L.marker([location.lat, location.lng], { 
-        icon: iconType 
-    })
-    .addTo(map)
-    .bindPopup(popupText);
-    
-    console.log('👤 Andere speler toegevoegd:', location.name);
-}
-
-function calculateDistanceToPlayer(otherLocation) {
-    if (!currentMarker) return '?';
-    
-    const vosLocation = currentMarker.getLatLng();
-    const distance = calculateDistance(
-        vosLocation.lat, vosLocation.lng,
-        otherLocation.lat, otherLocation.lng
-    );
-    
-    return Math.round(distance);
 }
