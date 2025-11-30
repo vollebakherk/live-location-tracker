@@ -302,29 +302,33 @@
                 updateOwnMap(locationData);
             }
 
-            function updateOwnMap(location) {
-                console.log('🗺️ Update eigen kaart:', location);
-                
-                if (currentMarker) map.removeLayer(currentMarker);
-                if (accuracyCircle) map.removeLayer(accuracyCircle);
+           function updateOwnMap(location) {
+    console.log('🗺️ Update eigen kaart:', location);
+    
+    if (currentMarker) map.removeLayer(currentMarker);
+    if (accuracyCircle) map.removeLayer(accuracyCircle);
 
-                currentMarker = L.marker([location.lat, location.lng], { 
-                    icon: vosIcon 
-                })
-                .addTo(map)
-                .bindPopup(`<b>🦊 Jij bent de vos!</b><br>Ren maar hard!`)
-                .openPopup();
+    currentMarker = L.marker([location.lat, location.lng], { 
+        icon: vosIcon 
+    })
+    .addTo(map)
+    .bindPopup(`<b>🦊 Jij bent de vos!</b><br>Ren maar hard!`)
+    .openPopup();
 
-                accuracyCircle = L.circle([location.lat, location.lng], {
-                    color: '#e74c3c',
-                    fillColor: '#e74c3c',
-                    fillOpacity: 0.1,
-                    radius: location.accuracy
-                }).addTo(map);
+    accuracyCircle = L.circle([location.lat, location.lng], {
+        color: '#e74c3c',
+        fillColor: '#e74c3c',
+        fillOpacity: 0.1,
+        radius: location.accuracy
+    }).addTo(map);
 
-                map.setView([location.lat, location.lng], 16);
-            }
-
+    // ALLEEN centreren bij eerste update, daarna niet meer
+    if (!window.kaartIsGecentreerd) {
+        map.setView([location.lat, location.lng], 16);
+        window.kaartIsGecentreerd = true;
+        console.log('🗺️ Eerste keer kaart gecentreerd op vos');
+    }
+}
             function handleLocationError(error) {
                 console.error('❌ Locatie fout:', error);
                 document.getElementById('status').innerHTML = 
