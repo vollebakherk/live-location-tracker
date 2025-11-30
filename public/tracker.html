@@ -86,13 +86,25 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             document.getElementById('status').innerHTML = '⏹️ Sharing gestopt';
         }
 
-        function sendLocationToServer(position) {
-            const locationData = {
-                lat: position.coords.latitude,
-                lng: position.coords.longitude,
-                accuracy: position.coords.accuracy,
-                name: "Jouw Naam" // Verander dit!
-            };
+       function sendLocationToServer(position) {
+    const TRACKER_ID = 'main-tracker'; // VOEG DIT TOE
+    
+    const locationData = {
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+        accuracy: position.coords.accuracy,
+        trackerId: TRACKER_ID, // ← BELANGRIJK: voeg trackerId toe!
+        name: "Jouw Locatie"   // Pas deze naam aan naar jouw naam
+    };
+
+    console.log('📍 Stuur locatie naar server:', locationData); // Debug log
+
+    // Stuur naar server
+    socket.emit('updateLocation', locationData);
+    
+    // Update eigen kaart
+    updateOwnMap(locationData);
+}
 
             // Stuur naar server
             socket.emit('updateLocation', locationData);
