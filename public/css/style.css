@@ -30,7 +30,7 @@ body {
 }
 
 .header p {
-    font-size: clamp(14px, 3vw, 16px);
+    font-size: clamp(14px, 3vw, 26px);
     opacity: 0.9;
 }
 
@@ -98,12 +98,12 @@ button {
     border: none;
     border-radius: 15px;
     cursor: pointer;
-    font-size: clamp(17px, 4vw, 20px); /* GROTERE tekst */
+    font-size: clamp(17px, 4vw, 40px); /* GROTERE tekst */
     font-weight: bold;
     text-align: center;
     transition: all 0.2s ease;
     box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-    display: flex;
+    /*display: flex;*/
     align-items: center;
     justify-content: center;
     gap: 8px;
@@ -192,7 +192,7 @@ button:disabled {
     padding: clamp(14px, 4vw, 18px) clamp(20px, 5vw, 30px);
     background: rgba(255,255,255,0.15);
     border-radius: 12px;
-    font-size: clamp(15px, 3.5vw, 18px);
+    font-size: clamp(15px, 3.5vw, 28px);
     transition: all 0.2s;
     text-align: center;
 }
@@ -205,7 +205,7 @@ button:disabled {
 /* Status en meldingen */
 #status { 
     margin: 15px 0;
-    font-size: clamp(15px, 3.5vw, 18px);
+    font-size: clamp(15px, 3.5vw, 28px);
     padding: clamp(12px, 3vw, 16px);
     background: rgba(255,255,255,0.1);
     border-radius: 12px;
