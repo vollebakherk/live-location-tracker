@@ -52,7 +52,7 @@ body {
 
 .player-info {
     background: rgba(41, 128, 185, 0.2);
-    font-size: clamp(14px, 3vw, 16px);
+    font-size: clamp(14px, 3vw, 26px);
 }
 
 /* Input velden */
