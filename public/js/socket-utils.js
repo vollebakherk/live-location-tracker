@@ -1,7 +1,4 @@
-// socket-utils.js - Verbeterde Socket.io helper functies
-let socket = null;
-let locationTracker = null;
-
+// socket-utils.js - Socket.io helper functies
 function waitForSocketIO(callback) {
     if (typeof io !== 'undefined') {
         console.log('✅ Socket.io is geladen!');
@@ -14,16 +11,10 @@ function waitForSocketIO(callback) {
     }
 }
 
-function connectSocket(serverUrl, handlers) {
-    socket = io(serverUrl);
-    
+function initializeSocketHandlers(socket, handlers) {
     socket.on('connect', () => {
         console.log('✅ Verbonden met server! Socket ID:', socket.id);
-        if (handlers.onConnect) handlers.onConnect(socket.id);
-        
-        if (locationTracker) {
-            locationTracker.startTracking(socket);
-        }
+        if (handlers.onConnect) handlers.onConnect();
     });
 
     socket.on('vosStatus', (data) => {
@@ -41,43 +32,8 @@ function connectSocket(serverUrl, handlers) {
         if (handlers.onLocationUpdate) handlers.onLocationUpdate(data);
     });
 
-    socket.on('playersNearby', (nearbyPlayers) => {
-        console.log('👥 Spelers in de buurt:', nearbyPlayers.length);
-        if (handlers.onPlayersNearby) handlers.onPlayersNearby(nearbyPlayers);
-    });
-
     socket.on('error', (message) => {
         console.error('❌ Socket error:', message);
         if (handlers.onError) handlers.onError(message);
     });
-    
-    return socket;
-}
-
-function sendLocation(position) {
-    if (socket && socket.connected) {
-        // Formatteer met hoge precisie
-        const formattedPos = {
-            lat: parseFloat(position.lat).toFixed(7),
-            lng: parseFloat(position.lng).toFixed(7)
-        };
-        
-        socket.emit('updateLocation', {
-            lat: formattedPos.lat,
-            lng: formattedPos.lng,
-            accuracy: position.accuracy || 10,
-            timestamp: Date.now()
-        });
-        console.log('📤 Locatie verzonden:', formattedPos);
-        return true;
-    }
-    return false;
-}
-
-function setLocationTracker(tracker) {
-    locationTracker = tracker;
-}
-
-function getSocket() {
-    return socket;
 }
