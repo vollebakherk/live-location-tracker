@@ -1,4 +1,4 @@
-/ socket-utils.js - Verbeterde Socket.io helper functies
+// socket-utils.js - Verbeterde Socket.io helper functies
 let socket = null;
 let locationTracker = null;
 
@@ -21,7 +21,6 @@ function connectSocket(serverUrl, handlers) {
         console.log('✅ Verbonden met server! Socket ID:', socket.id);
         if (handlers.onConnect) handlers.onConnect(socket.id);
         
-        // Start locatie tracking na connectie
         if (locationTracker) {
             locationTracker.startTracking(socket);
         }
@@ -38,16 +37,12 @@ function connectSocket(serverUrl, handlers) {
     });
 
     socket.on('locationUpdate', (data) => {
-        // Valideer en format positie
-        if (data.position) {
-            data.position = LocationUtils.formatPosition(data.position);
-        }
         console.log('📍 Locatie ontvangen:', data.trackerId, data.isVos ? '(VOS)' : '');
         if (handlers.onLocationUpdate) handlers.onLocationUpdate(data);
     });
 
     socket.on('playersNearby', (nearbyPlayers) => {
-        console.log('👥 Spelers in de buurt:', nearbyPlayers);
+        console.log('👥 Spelers in de buurt:', nearbyPlayers.length);
         if (handlers.onPlayersNearby) handlers.onPlayersNearby(nearbyPlayers);
     });
 
@@ -61,13 +56,19 @@ function connectSocket(serverUrl, handlers) {
 
 function sendLocation(position) {
     if (socket && socket.connected) {
-        const formattedPos = LocationUtils.formatPosition(position);
+        // Formatteer met hoge precisie
+        const formattedPos = {
+            lat: parseFloat(position.lat).toFixed(7),
+            lng: parseFloat(position.lng).toFixed(7)
+        };
+        
         socket.emit('updateLocation', {
             lat: formattedPos.lat,
             lng: formattedPos.lng,
             accuracy: position.accuracy || 10,
             timestamp: Date.now()
         });
+        console.log('📤 Locatie verzonden:', formattedPos);
         return true;
     }
     return false;
